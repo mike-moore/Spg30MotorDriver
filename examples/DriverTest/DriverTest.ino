@@ -22,12 +22,15 @@ enum TestCases
     FWD_POS_TEST = 0,
     BWD_POS_TEST = 1,
     FWD_VEL_TEST = 2,
-    BWD_VEL_TEST = 3
+    ZERO_VEL_TEST = 3,
+    BWD_VEL_TEST = 4
 };
 TestCases TestNumber;
 
 void setup() {                       
     Serial.begin(115600);
+    digitalWrite(encoderPinA, HIGH);
+    digitalWrite(encoderPinB, HIGH);
     // Very Important - attach interrupts for encoders
     attachInterrupt(digitalPinToInterrupt(encoderPinA), ISR_encoderA, CHANGE);
     attachInterrupt(digitalPinToInterrupt(encoderPinB), ISR_encoderB, CHANGE);
@@ -38,37 +41,63 @@ void loop() {
     switch(TestNumber)
     {
         case FWD_POS_TEST:
-            // motorController.ControlMode = Spg30MotorDriver::POSITION; 
-            // motorController.PositionCmd(720.0); 
-            // motorController.run();
-            // if (motorController.ReachedPosition){
+            motorController.ControlMode = Spg30MotorDriver::POSITION; 
+            motorController.PositionCmd(720); 
+            motorController.run();
+            if (motorController.ReachedPosition()){
+                 Serial.println("FWD POSITION TEST COMPLETE");
+                 delay(5000);
+                 Serial.println("STARTING BWD POSITION TEST");
                  TestNumber = BWD_POS_TEST;
-            // }
+            }
         break;
 
         case BWD_POS_TEST:
-            // motorController.ControlMode = Spg30MotorDriver::POSITION; 
-            // motorController.PositionCmd(-720.0); 
-            // motorController.run();
-            // if (motorController.ReachedPosition){
-                  TestNumber = FWD_VEL_TEST;
-            // }
+            motorController.ControlMode = Spg30MotorDriver::POSITION; 
+            motorController.PositionCmd(-720); 
+            motorController.run();
+            if (motorController.ReachedPosition()){
+                 Serial.println("BWD POSITION TEST COMPLETE");
+                 delay(5000);
+                 Serial.println("STARTING FWD VELOCITY TEST");
+                 TestNumber = FWD_VEL_TEST;
+            }
         break;
 
         case FWD_VEL_TEST:
             motorController.ControlMode = Spg30MotorDriver::VELOCITY; 
-            motorController.VelocityCmd(30.0); 
+            motorController.VelocityCmd(25); 
             motorController.run();
-            delay(5000);
-            TestNumber = BWD_VEL_TEST;
+            if (motorController.ReachedVelocity()){
+                 Serial.println("FWD VELOCITY TEST COMPLETE");
+                 delay(5000);
+                 Serial.println("STARTING ZERO VELOCITY TEST");
+                 TestNumber = ZERO_VEL_TEST;
+            }
+        break;
+
+        case ZERO_VEL_TEST:
+            motorController.ControlMode = Spg30MotorDriver::VELOCITY; 
+            motorController.VelocityCmd(0); 
+            motorController.run();
+            if (motorController.ReachedVelocity()){
+                 Serial.println("ZERO VELOCITY TEST COMPLETE");
+                 delay(5000);
+                 Serial.println("STARTING BWD VELOCITY TEST");
+                 TestNumber = BWD_VEL_TEST;
+            }
         break;
 
         case BWD_VEL_TEST:
             motorController.ControlMode = Spg30MotorDriver::VELOCITY; 
-            motorController.VelocityCmd(-30.0); 
+            motorController.VelocityCmd(-25); 
             motorController.run();
-            delay(5000);
-            TestNumber = FWD_POS_TEST;
+            if (motorController.ReachedVelocity()){
+                 Serial.println("BWD VELOCITY TEST COMPLETE");
+                 delay(5000);
+                 Serial.println("STARTING FWD POSITION TEST");
+                 TestNumber = FWD_POS_TEST;
+            }
         break;
 
         default:
@@ -76,6 +105,7 @@ void loop() {
             TestNumber = FWD_POS_TEST;
         break;
     }
+    delay(loopTimeMillis);
 }
 
 void ISR_encoderA(){

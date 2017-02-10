@@ -34,22 +34,40 @@ class Spg30MotorDriver {
   ///        should set this before attempting a PositionCmd
   ///        or VelocityCmd.
   ControlModes ControlMode;
+  /// @brief Defines the different speeds that can be used
+  ///        for position control.
+  enum MotorSpeeds
+  {
+      STOP         = 0,
+      VEL_LOW      = 100,
+      VEL_MEDIUM   = 200,
+      VEL_HIGH     = 255
+  };
+  /// @brief The motor speed used for position control.
+  /// @note  This is irrelevant for velocity control.
+  MotorSpeeds MotorSpeed;
   /// @brief Driver's primary update routine. This runs the
   ///        driver's internal state machine.
   void run();
   /// @brief User should set one of these commands after specifying 
   ///        which control mode they want to use.
-  void PositionCmd(float positionCmd);
-  void VelocityCmd(int_least8_t velocityCmd);
-  /// @brief Function ther user can call to see if their commanded
-  ///        position has been reached.
+  void PositionCmd(int16_t positionCmd);
+  void VelocityCmd(int velocityCmd);
+  /// @brief Functions the user can call to see if their commanded
+  ///        position and velocity have been reached.
   bool ReachedPosition();
+  bool ReachedVelocity();
   void _isr_EncoderA();
   void _isr_EncoderB();
  private:
   void _computeMotorSpeed();
   void _pidControl();
-  void _updatePid(uint_least8_t command, uint_least8_t targetValue, uint_least8_t currentValue);
+  void _updatePid();
+  void _positionControl();
+  void _motorBackward();
+  void _motorForward();
+  void _motorBrake();
+  void _printMotorInfo();
   uint_least8_t _loopRateMillis;
   uint_least8_t _motorPinA1;
   uint_least8_t _motorPinB1;
@@ -58,30 +76,49 @@ class Spg30MotorDriver {
   uint_least8_t _encoderPinB;
   uint_least8_t _encoderCountsPerRev;
   volatile long _encoderCount;
-  int_least8_t _velocityCmd;
-  float _positionCmd;
+  long _countInit;
+  long _tickNumber;
+  int _velocityCmd;
+  int16_t _positionCmd;
   uint_least8_t _pwmCmd;
   int _measuredSpeed;
   unsigned long _lastMillis;
+  unsigned long _lastMilliPrint;
   float _Kp;
   float _Kd;
   bool _A_set;
   bool _B_set;
+  bool _motorIsRunning; 
   bool _positionReached; 
+  bool _velocityReached; 
 };
 
 inline bool Spg30MotorDriver::ReachedPosition(){
 	return _positionReached;
 }
 
-inline void Spg30MotorDriver::VelocityCmd(int_least8_t velocityCmd){
-	// TODO constrain to +- 35 RPM
-	_velocityCmd = velocityCmd;
+inline bool Spg30MotorDriver::ReachedVelocity(){
+  return _velocityReached;
 }
 
-inline void Spg30MotorDriver::PositionCmd(float positionCmd){
-	// TODO bounds check.
-	_positionCmd = positionCmd;
+inline void Spg30MotorDriver::VelocityCmd(int velocityCmd){
+	// TODO constrain to +- 35 RPM
+  if(_velocityReached && velocityCmd != _velocityCmd){
+      _velocityCmd = velocityCmd;
+      _velocityReached = false;
+  }
+}
+
+inline void Spg30MotorDriver::PositionCmd(int16_t positionCmd){
+  // - Logic here checks that we have a non-zero position command,
+  //   AND that we're not already trying to reach a position, AND
+  //   that we haven't received the same command we're currently executing.
+  if (positionCmd!=0 && _positionReached && positionCmd!=_positionCmd){
+    _positionCmd = positionCmd;
+    _tickNumber = positionCmd;
+    _countInit = _encoderCount;
+    _positionReached = false;
+  }
 }
 
 #endif
