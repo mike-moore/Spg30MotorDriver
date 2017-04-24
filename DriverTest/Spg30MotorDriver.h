@@ -20,8 +20,7 @@ class Spg30MotorDriver {
  public:
   /// @brief Construct the driver by providing all Arduino pin assignments
   Spg30MotorDriver(uint_least8_t loopRateMillis, uint_least8_t motorPinA1, 
-  	               uint_least8_t motorPinB1, uint_least8_t pwmPin, uint_least8_t encoderPinA,
-  	               uint_least8_t encoderPinB);
+  	               uint_least8_t motorPinB1, uint_least8_t pwmPin, volatile long int& encoderCount);
 
   /// @brief Defines this motor driver's modes of operation.
   enum ControlModes
@@ -57,8 +56,6 @@ class Spg30MotorDriver {
   ///        position and velocity have been reached.
   bool ReachedPosition();
   bool ReachedVelocity();
-  void _isr_EncoderA();
-  void _isr_EncoderB();
  private:
   void _computeMotorSpeed();
   void _pidControl();
@@ -72,10 +69,8 @@ class Spg30MotorDriver {
   uint_least8_t _motorPinA1;
   uint_least8_t _motorPinB1;
   uint_least8_t _pwmPin;
-  uint_least8_t _encoderPinA;
-  uint_least8_t _encoderPinB;
   uint_least8_t _encoderCountsPerRev;
-  volatile long _encoderCount;
+  volatile long & _encoderCount;
   long _countInit;
   long _tickNumber;
   int _velocityCmd;
@@ -86,8 +81,6 @@ class Spg30MotorDriver {
   unsigned long _lastMilliPrint;
   float _Kp;
   float _Kd;
-  bool _A_set;
-  bool _B_set;
   bool _motorIsRunning; 
   bool _positionReached; 
   bool _velocityReached; 

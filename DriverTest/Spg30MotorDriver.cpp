@@ -1,18 +1,15 @@
 #include "Spg30MotorDriver.h"
 
 Spg30MotorDriver::Spg30MotorDriver(uint_least8_t loopRateMillis, uint_least8_t motorPinA1,
-                   uint_least8_t motorPinB1, uint_least8_t pwmPin, uint_least8_t encoderPinA,
-  	               uint_least8_t encoderPinB) :
+                   uint_least8_t motorPinB1, uint_least8_t pwmPin, volatile long & encoderCount) :
     ControlMode(IDLE),
-    MotorSpeed(VEL_MEDIUM),
+    MotorSpeed(VEL_HIGH),
     _loopRateMillis(loopRateMillis),
     _motorPinA1(motorPinA1),
     _motorPinB1(motorPinB1),
     _pwmPin(pwmPin),
-    _encoderPinA(encoderPinA),
-    _encoderPinB(encoderPinB),
     _encoderCountsPerRev(360),
-    _encoderCount(0),
+    _encoderCount(encoderCount),
     _countInit(0),
     _tickNumber(0),
     _velocityCmd(0),
@@ -23,8 +20,6 @@ Spg30MotorDriver::Spg30MotorDriver(uint_least8_t loopRateMillis, uint_least8_t m
     _lastMilliPrint(0),
     _Kp(0.4),
     _Kd(1.0),
-    _A_set(false),
-    _B_set(false),
     _motorIsRunning(false),
     _positionReached(true),
     _velocityReached(true)
@@ -33,8 +28,6 @@ Spg30MotorDriver::Spg30MotorDriver(uint_least8_t loopRateMillis, uint_least8_t m
     pinMode(_motorPinA1, OUTPUT);
     pinMode(_motorPinB1, OUTPUT);
     pinMode(_pwmPin, OUTPUT);
-    digitalWrite(_encoderPinA, HIGH);
-    digitalWrite(_encoderPinB, HIGH);
     analogWrite(_pwmPin, 0);
     digitalWrite(_motorPinA1, LOW);
     digitalWrite(_motorPinB1, HIGH);
@@ -143,20 +136,3 @@ void Spg30MotorDriver::_printMotorInfo(){
         Serial.println("");              
     }
 }
-
-// Interrupt on A changing state
-void Spg30MotorDriver::_isr_EncoderA(){
-    // Test transition
-    _A_set = digitalRead(_encoderPinA) == HIGH;
-    // and adjust counter + if A leads B
-    _encoderCount += (_A_set != _B_set) ? +1 : -1;
-}
-
-// Interrupt on B changing state
-void Spg30MotorDriver::_isr_EncoderB(){
-    // Test transition
-    _B_set = digitalRead(_encoderPinB) == HIGH;
-    // and adjust counter + if B follows A
-    _encoderCount += (_A_set == _B_set) ? +1 : -1;
-}
-
